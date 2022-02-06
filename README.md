@@ -5,7 +5,7 @@ programming-Rust-2nd
 
 ## 書籍情報
 
-- 『Programming Rust, econd Edition』
+- 『Programming Rust, Second Edition』
 - Jim Blandy, Jason Orendorff, Leonora F. S. Tindall 著
 - O'Reilly
 - Copyright 2021 Jim Blandy, Jason Orendorff
