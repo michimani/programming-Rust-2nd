@@ -216,3 +216,297 @@
         )
     }
     ```
+
+### flatten
+
+- イテレータが生成する Item としてのイテレータをつなぎ合わせる
+
+  ```rust
+  #[test]
+  fn test_flatten() {
+      // HashMap だと順序が固定されないので、ここでは BTreeMap を使う
+      use std::collections::BTreeMap;
+
+      let mut members = BTreeMap::new();
+      members.insert("Bob", vec!["カレールウ", "白ごはん", "牛肉"]);
+      members.insert("Ken", vec!["ニンジン"]);
+      members.insert("Yui", vec!["タマネギ", "ジャガイモ"]);
+
+      let curry_rice: Vec<_> = members.values().flatten().copied().collect();
+
+      assert_eq!(
+          curry_rice,
+          vec![
+              "カレールウ",
+              "白ごはん",
+              "牛肉",
+              "ニンジン",
+              "タマネギ",
+              "ジャガイモ",
+          ]
+      )
+  }
+  ```
+
+- `flat_map` を使う場面で `map` と `flatten` を使ってしまう場合があるので使い分けには注意
+- `vec![None, Some("hoge"), Some("fuga"), None, None]` のようなベクタに対して `.iter().flatten().collect()` を実行することで `vec!["hoge","fuga"]` が得られる
+  - これは、 `Option<T>` が 1 または 0 個の値を持つシーケンスとして IntoIterator を実装しているから
+
+### take と take_while
+
+- `take`: 指定された回数で繰り返し処理を停止
+- `take_while`: 与えられたクロージャの計算結果によって停止するか否かを決める
+
+  ```rust
+  /// 0 から順に値を生成するイテレータに対して、 10 以下の場合のみ値を生成する
+  #[test]
+  fn test_take_while() {
+      let mut sum = 0;
+      for num in (0..).take_while(|n| *n <= 10) {
+          sum += num
+      }
+
+      assert_eq!(sum, 55)
+  }
+  ```
+  
+### skip と skip_while
+
+- `skip`: 指定した回数、繰り返し処理をスキップする
+- `skip_while`: クロージャがある条件を満たす要素を見つけるまで繰り返し処理をスキップする
+
+  ```rust
+  #[test]
+  fn test_skip_skip_while() {
+      let mut sum_skip = 0;
+      for num in (1..=10).skip(8) {
+          sum_skip += num
+      }
+
+      assert_eq!(sum_skip, 19);
+
+      let mut sum_skip_while = 0;
+      for num in (1..=10).skip_while(|n| *n < 5) {
+          sum_skip_while += num
+      }
+
+      assert_eq!(sum_skip_while, 45);
+  }
+  ```
+
+### peekable
+
+- 次に生成される Item を実際に消費することなく見ることができる (=ピーク可能)
+- Iterator トレイトの `peekable` メソッドを呼ぶことで、そのイテレータをピーク可能にする
+- Peekable イテレータで `peak()` メソッドを呼ぶと、 `Some(v)` または `None` を取得できる
+  - `v` は次の Item の参照 (イテレータが生成する値がもともと参照型の場合、参照の参照となる)
+  - 値がなければ `None` となる
+
+  ```rust
+  #[test]
+  fn test_peekable() {
+      use std::iter::Peekable;
+
+      fn parse_number<I>(tokens: &mut Peekable<I>) -> u32
+      where
+          I: Iterator<Item = char>,
+      {
+          let mut n = 0;
+          loop {
+              match tokens.peek() {
+                  // 次の値を見る
+                  Some(r) if r.is_digit(10) => {
+                      // 値が存在して、かつ 0-9 の値かであるかをチェック
+                      n = n * 10 + r.to_digit(10).unwrap(); // マッチするなら、 n の桁に追加する
+                  }
+                  _ => return n, // マッチしなければその時点の n を返す
+              }
+              tokens.next(); // 次の値へ
+          }
+      }
+
+      let mut chars = "12345,67890".chars().peekable();
+      assert_eq!(parse_number(&mut chars), 12345);
+      assert_eq!(chars.next(), Some(','));
+      assert_eq!(parse_number(&mut chars), 67890);
+  }
+  ```
+  
+### fuse
+
+- 一度 `None` を返したイテレータに対して `next()` を実行した際に、再度 `None` を返すようにする
+- 出どころがわからないイテレータに対して処理を実行する際に使用することで、 お行儀を良くさせる
+
+### 反転可能イテレータと rev
+
+- 列の両端から値を取り出せるイテレータ (ベクタなど) に対して `rev` が使える
+- このようなイテレータは Iterator を拡張した `std::iter::DoubleEndedIterator` を実装でき、 `next_back()` メソッドによって後ろから値を取り出せる
+- `std::iter::DoubleEndedIterator` は`rev()` メソッドで反転できる
+- 標準ライブラリのイテレータが `DoubleEndedIterator` を実装しているかどうかはドキュメントを確認するしかない
+
+  ```rust
+  #[test]
+  fn test_next_back_rev() {
+      let numbers = vec![1, 2, 3, 4, 5];
+      let mut numiter = numbers.iter();
+
+      assert_eq!(numiter.next(), Some(&1));
+      assert_eq!(numiter.next(), Some(&2));
+      assert_eq!(numiter.next_back(), Some(&5));
+      assert_eq!(numiter.next_back(), Some(&4));
+      assert_eq!(numiter.next_back(), Some(&3));
+      assert_eq!(numiter.next(), None);
+      assert_eq!(numiter.next_back(), None);
+
+      let mut revnum = numbers.iter().rev();
+      assert_eq!(revnum.next(), Some(&5));
+      assert_eq!(revnum.next(), Some(&4));
+      assert_eq!(revnum.next_back(), Some(&1));
+      assert_eq!(revnum.next_back(), Some(&2));
+      assert_eq!(revnum.next_back(), Some(&3));
+      assert_eq!(revnum.next(), None);
+      assert_eq!(revnum.next_back(), None);
+  }
+  ```
+  
+### inspect
+
+- デバッグ用のアダプタ。実際のコードではあまり使われない
+- クロージャを引数に取り、値の共有参照に対して操作を実施できる
+  - アサーション、出力など
+
+  ```rust
+  #[test]
+  fn test_inspect() {
+      let mut v = vec![];
+
+      for num in (1..=5)
+          .inspect(|n| println!("before: {}", *n))
+          .map(|n| n * n)
+          .inspect(|n| println!("after: {}", *n))
+      {
+          v.push(num)
+      }
+
+      assert_eq!(v, [1, 4, 9, 16, 25])
+  }
+  ```
+
+### chain
+
+- ２つのイテレータをつなげる
+- 正確には、１つ目のイテレータから値を取り出し、続いて２つ目のイテレータから値を取り出す
+- 同じ型の値を生成するイテレータと結合可能
+
+  ```rust
+  #[test]
+  fn test_chain() {
+      let v: Vec<i32> = (1..=5).chain(vec![10, 20, 30, 40, 50]).collect();
+      assert_eq!(v, [1, 2, 3, 4, 5, 10, 20, 30, 40, 50])
+  }
+  ```
+
+### enumerate
+
+- 生成した Item の列にインデックスを付与する (Python にもそんなのあったな)
+
+  ```rust
+  #[test]
+  fn test_enumerate() {
+      let numbers = [0, 1, 4, 9, 16, 25];
+      let mut num_with_index = vec![];
+
+      for ni in numbers.iter().enumerate() {
+          num_with_index.push((ni.0, *ni.1))
+      }
+
+      assert_eq!(
+          num_with_index,
+          [(0, 0), (1, 1), (2, 4), (3, 9), (4, 16), (5, 25)]
+      )
+  }
+  ```
+  
+### zip
+
+- ２つのイテレータを合わせて１つのイテレータにする
+- 合わせて作られたイテレータが生成するのは、２つのイテレータの値のペア
+- つまり `enumerate()` を一般化したもの
+- 片方のイテレータが `None` を返した時点で終了
+
+  ```rust
+  #[test]
+  fn test_zip() {
+      let numbers = [0, 1, 4, 9, 16, 25];
+      let index_iter = 0..;
+      let mut num_with_index = vec![];
+
+      for ni in index_iter.zip(numbers.iter()) {
+          num_with_index.push((ni.0, *ni.1))
+      }
+
+      assert_eq!(
+          num_with_index,
+          [(0, 0), (1, 1), (2, 4), (3, 9), (4, 16), (5, 25)]
+      )
+  }
+  ```
+
+### by_ref
+
+- イテレータに対する可変参照を借用する
+- 一度使ったイテレータを再度使いたい場合に有効
+
+  ```rust
+  #[test]
+  fn test_by_ref() {
+      let numbers: Vec<i32> = (0..5).collect();
+      let mut iter = numbers.iter();
+      for n in iter.by_ref().take(2) {
+          println!("{}", n);
+      }
+
+      assert_eq!(iter.next(), Some(&2));
+      assert_eq!(iter.next(), Some(&3));
+      assert_eq!(iter.next(), Some(&4));
+      assert_eq!(iter.next(), None);
+  }
+  ```
+
+### cloned と copied
+
+- `cloned`: 参照を生成するイテレータに対して、生成された値をクローンして生成するイテレータを返す
+  - 参照されている型は `Clone` を実装している必要がある
+- `copied`: `Copy` が実装されている必要があるという点で `cloned` よりも制約が強い
+
+### cycle
+
+- 元となるイテレータ生成する Item 列を無限に繰り返すイテレータを返す
+
+  ```rust
+  #[test]
+  fn test_cycle() {
+      let index = 0..9;
+      let day = ["おはよう", "こんにちは", "おやすみ"];
+      let mut greet = vec![];
+
+      for d in index.zip(day.iter().cycle()) {
+          greet.push(*d.1)
+      }
+
+      assert_eq!(
+          greet,
+          [
+              "おはよう",
+              "こんにちは",
+              "おやすみ",
+              "おはよう",
+              "こんにちは",
+              "おやすみ",
+              "おはよう",
+              "こんにちは",
+              "おやすみ"
+          ]
+      )
+  }
+  ```
