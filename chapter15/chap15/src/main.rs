@@ -408,3 +408,130 @@ fn test_cycle() {
         ]
     )
 }
+
+#[test]
+fn test_count_sum_product_max_min() {
+    let numbers = [1, 5, 2, 3, 4];
+
+    assert_eq!(numbers.iter().copied().count(), 5);
+    assert_eq!(numbers.iter().sum::<i32>(), 15);
+    assert_eq!(numbers.iter().product::<i32>(), 120);
+    assert_eq!(numbers.iter().max(), Some(&5));
+    assert_eq!(numbers.iter().min(), Some(&1));
+}
+
+#[test]
+fn test_max_min_by() {
+    use std::cmp::Ordering;
+
+    let numbers = [1.0, 2.2, -3.0, -4.0, 5.5];
+
+    // 下記は実行できない
+    // assert_eq!(numbers.iter().copied().max(), 5.5);
+    // assert_eq!(numbers.iter().copied().min(), -4.0);
+
+    fn cmp_partial(a: &f64, b: &f64) -> Ordering {
+        a.partial_cmp(b).unwrap()
+    }
+
+    assert_eq!(numbers.iter().copied().max_by(cmp_partial), Some(5.5));
+    assert_eq!(numbers.iter().copied().min_by(cmp_partial), Some(-4.0));
+}
+
+#[test]
+fn test_max_min_by_key() {
+    #[derive(Debug, PartialEq)]
+    struct User {
+        name: String,
+        age: i32,
+    }
+
+    let users = [
+        User {
+            name: "user1".to_string(),
+            age: 20,
+        },
+        User {
+            name: "user2".to_string(),
+            age: 25,
+        },
+        User {
+            name: "user3".to_string(),
+            age: 40,
+        },
+        User {
+            name: "user4".to_string(),
+            age: 30,
+        },
+        User {
+            name: "user5".to_string(),
+            age: 15,
+        },
+    ];
+
+    assert_eq!(
+        users.iter().max_by_key(|&u| u.age),
+        Some(&User {
+            name: "user3".to_string(),
+            age: 40,
+        })
+    );
+    assert_eq!(
+        users.iter().min_by_key(|&u| u.age),
+        Some(&User {
+            name: "user5".to_string(),
+            age: 15,
+        })
+    )
+}
+
+#[test]
+fn test_any_all() {
+    let numbers = [1, 2, 3, 4, 5];
+
+    assert!(numbers.iter().any(|n| *n > 4));
+    assert!(!numbers.iter().all(|n| *n > 4));
+}
+
+#[test]
+fn test_position_rposition() {
+    let numbers = [1, 2, 3, 4, 5];
+
+    assert_eq!(numbers.iter().position(|n| *n % 2 == 0), Some(1));
+    assert_eq!(numbers.iter().rposition(|n| *n % 2 == 0), Some(3));
+}
+
+#[test]
+fn test_fold_rfold() {
+    let chars = ["a", "b", "c", "d", "e"];
+
+    assert_eq!(chars.iter().fold(String::new(), |s, c| s + c), "abcde");
+    assert_eq!(chars.iter().rfold(String::new(), |s, c| s + c), "edcba");
+}
+
+#[test]
+fn test_partition() {
+    let numbers = [0, 1, 2, 3, 4, 5];
+
+    let (even, odd): (Vec<&i32>, Vec<&i32>) = numbers.iter().partition(|n| *n % 2 == 0);
+
+    assert_eq!(even, [&0, &2, &4]);
+    assert_eq!(odd, [&1, &3, &5]);
+}
+
+struct I32Range {
+    start: i32,
+    end: i32,
+}
+
+impl Iterator for I32Range {
+    type Item = i32;
+    fn next(&mut self) -> Option<i32> {
+        if self.start >= self.end {
+            return None;
+        }
+        let res = Some(self.start);
+        self.start += 1;
+        res
+    }
+}
