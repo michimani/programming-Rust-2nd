@@ -113,7 +113,7 @@ fn test_vec_3() {
 }
 
 #[test]
-fn vec_4() {
+fn test_vec_4() {
     // drain, retain, dedup
     let mut numbers = vec![1, 2, 2, 3, 3, 3, 9, 9, 9, 9, 9, 4, 4, 4, 4, 5, 5, 5, 5, 5];
 
@@ -126,4 +126,161 @@ fn vec_4() {
 
     numbers.dedup();
     assert_eq!(numbers, [1, 2, 3, 4]);
+}
+
+#[test]
+fn test_slice_1() {
+    let s1 = [1, 1];
+    let s2 = [2, 2];
+    let s3 = [3, 3];
+
+    assert_eq!([s1, s2, s3].concat(), [1, 1, 2, 2, 3, 3]);
+    assert_eq!([s1, s2, s3].join(&9), [1, 1, 9, 2, 2, 9, 3, 3])
+}
+
+#[test]
+fn test_slice_2() {
+    // split_at
+    let s = [0, 1, 2, 3, 4, 5];
+    let res_split_at = s.split_at(3);
+    assert_eq!(res_split_at.0, &[0, 1, 2]);
+    assert_eq!(res_split_at.1, &[3, 4, 5]);
+
+    // split_first
+    let res_split_first = s.split_first();
+    assert_eq!(res_split_first.unwrap().0, &0);
+    assert_eq!(res_split_first.unwrap().1, &[1, 2, 3, 4, 5]);
+
+    // split
+    let mut res_split = s.split(|n| *n % 2 == 0);
+    assert_eq!(res_split.next().unwrap(), &[]);
+    assert_eq!(res_split.next().unwrap(), &[1]);
+    assert_eq!(res_split.next().unwrap(), &[3]);
+    assert_eq!(res_split.next().unwrap(), &[5]);
+    assert_eq!(res_split.next(), None);
+
+    // split_inclusive
+    let mut res_split_inclusive = s.split_inclusive(|n| *n % 2 == 0);
+    assert_eq!(res_split_inclusive.next().unwrap(), &[0]);
+    assert_eq!(res_split_inclusive.next().unwrap(), &[1, 2]);
+    assert_eq!(res_split_inclusive.next().unwrap(), &[3, 4]);
+    assert_eq!(res_split_inclusive.next().unwrap(), &[5]);
+    assert_eq!(res_split_inclusive.next(), None);
+}
+
+#[test]
+fn test_slice_3() {
+    let s = [0, 1, 2, 3, 4, 5, 6];
+
+    // chunks
+    let mut res_chunks = s.chunks(2);
+    assert_eq!(res_chunks.next().unwrap(), &[0, 1]);
+    assert_eq!(res_chunks.next().unwrap(), &[2, 3]);
+    assert_eq!(res_chunks.next().unwrap(), &[4, 5]);
+    assert_eq!(res_chunks.next().unwrap(), &[6]);
+    assert_eq!(res_chunks.next(), None);
+
+    // chunks_exact
+    let mut res_chunks_exact = s.chunks_exact(2);
+    assert_eq!(res_chunks_exact.next().unwrap(), &[0, 1]);
+    assert_eq!(res_chunks_exact.next().unwrap(), &[2, 3]);
+    assert_eq!(res_chunks_exact.next().unwrap(), &[4, 5]);
+    assert_eq!(res_chunks_exact.next(), None);
+    assert_eq!(res_chunks_exact.remainder(), &[6]);
+    assert_eq!(res_chunks_exact.next(), None);
+
+    // windows
+    let mut res_windows = s.windows(3);
+    assert_eq!(res_windows.next().unwrap(), &[0, 1, 2]);
+    assert_eq!(res_windows.next().unwrap(), &[1, 2, 3]);
+    assert_eq!(res_windows.next().unwrap(), &[2, 3, 4]);
+    assert_eq!(res_windows.next().unwrap(), &[3, 4, 5]);
+    assert_eq!(res_windows.next().unwrap(), &[4, 5, 6]);
+    assert_eq!(res_windows.next(), None);
+}
+
+#[test]
+fn test_slice_4() {
+    let mut s = vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+    s.swap(0, 6);
+    assert_eq!(s, [6, 1, 2, 3, 4, 5, 0, 7, 8, 9]);
+
+    s.swap_remove(3);
+    assert_eq!(s, [6, 1, 2, 9, 4, 5, 0, 7, 8]);
+
+    s.fill(0);
+    assert_eq!(s, [0, 0, 0, 0, 0, 0, 0, 0, 0]);
+}
+
+#[test]
+fn test_sort() {
+    // sort
+    let mut n = vec![1, 0, 4, 5, 2, 3, 9, 8, 7];
+    n.sort();
+    assert_eq!(n, [0, 1, 2, 3, 4, 5, 7, 8, 9]);
+
+    // sort_by
+    #[derive(Debug, PartialEq)]
+    struct User {
+        name: String,
+        age: i32,
+    }
+
+    let mut u = vec![
+        User {
+            name: "aaa".to_string(),
+            age: 42,
+        },
+        User {
+            name: "bbb".to_string(),
+            age: 12,
+        },
+        User {
+            name: "ccc".to_string(),
+            age: 30,
+        },
+    ];
+    // DESC
+    u.sort_by(|b, a| a.name.cmp(&b.name));
+    assert_eq!(
+        u,
+        vec![
+            User {
+                name: "ccc".to_string(),
+                age: 30,
+            },
+            User {
+                name: "bbb".to_string(),
+                age: 12,
+            },
+            User {
+                name: "aaa".to_string(),
+                age: 42,
+            },
+        ]
+    );
+
+    u.sort_by_key(|a| a.age);
+    assert_eq!(
+        u,
+        vec![
+            User {
+                name: "bbb".to_string(),
+                age: 12,
+            },
+            User {
+                name: "ccc".to_string(),
+                age: 30,
+            },
+            User {
+                name: "aaa".to_string(),
+                age: 42,
+            },
+        ]
+    );
+
+    assert!(u.contains(&User {
+        name: "aaa".to_string(),
+        age: 42,
+    }));
 }
