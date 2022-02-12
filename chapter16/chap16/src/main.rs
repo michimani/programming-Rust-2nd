@@ -284,3 +284,154 @@ fn test_sort() {
         age: 42,
     }));
 }
+
+#[test]
+fn test_vec_deque() {
+    use std::collections::VecDeque;
+
+    let v = vec![0, 1, 2, 3, 4];
+    let mut d = VecDeque::from(v);
+    assert_eq!(d.pop_front(), Some(0));
+    assert_eq!(d.pop_back(), Some(4));
+    d.push_front(5);
+    d.push_back(6);
+    assert_eq!(d, [5, 1, 2, 3, 6]);
+    let v2 = Vec::from(d);
+    assert_eq!(v2, [5, 1, 2, 3, 6]);
+}
+
+#[test]
+fn test_binary_heap() {
+    use std::collections::BinaryHeap;
+
+    let mut bh = BinaryHeap::from(vec![0, 9, 1, 2, 3, 8, 4, 7, 5, 6]);
+    let iter = bh.iter();
+    println!("BinaryHeap iterator: start");
+    for n in iter {
+        print!("{}", n)
+    }
+    println!("\nBinaryHeap iterator: end");
+
+    assert_eq!(bh.peek(), Some(&9));
+    let mut prev = bh.pop().unwrap();
+    while let Some(p) = bh.pop() {
+        assert!(p <= prev);
+        prev = p;
+    }
+    assert_eq!(bh.len(), 0);
+}
+
+#[test]
+fn test_set() {
+    use std::collections::HashSet;
+
+    let mut hs: HashSet<i32> = HashSet::new();
+    assert_eq!(hs.insert(1), true);
+    assert_eq!(hs.insert(2), true);
+    assert_eq!(hs.insert(3), true);
+    assert_eq!(hs.insert(3), false);
+    assert_eq!(hs.contains(&2), true);
+    assert_eq!(hs.remove(&2), true);
+    assert_eq!(hs.remove(&100), false);
+}
+
+#[test]
+fn test_set_2() {
+    use std::collections::HashSet;
+    let hs3: HashSet<i32> = (1..=30).filter(|n| *n % 3 == 0).collect();
+    let hs5: HashSet<i32> = (1..=30).filter(|n| *n % 5 == 0).collect();
+
+    // 積集合
+    let hs15 = &hs3 & &hs5;
+    // 下記は上記と同じ
+    // let mut hs15: HashSet<i32> = HashSet::new();
+    // for n in hs3.intersection(&hs5) {
+    //     hs15.insert(*n);
+    // }
+    assert_eq!(hs15.len(), 2);
+    assert!(hs15.contains(&15));
+    assert!(hs15.contains(&30));
+
+    // 和集合
+    let hs35 = &hs3 | &hs5;
+    assert_eq!(hs35.len(), 14);
+
+    // 差集合 (h1 のみに含まれるもの)
+    let hs33 = &hs3 - &hs5;
+    assert_eq!(hs33.len(), 8);
+
+    // 対称差集合
+    let hs3355 = &hs3 ^ &hs5;
+    assert_eq!(hs3355.len(), 12);
+}
+
+#[test]
+fn test_set_3() {
+    use std::collections::HashSet;
+
+    let a: HashSet<i32> = (2..20).filter(|n| *n % 2 == 0).collect();
+    let b: HashSet<i32> = (2..20).filter(|n| *n % 8 == 0).collect();
+    let c: HashSet<i32> = (2..20).filter(|n| *n % 11 == 0).collect();
+
+    // a ∩ c = ∅
+    assert!(a.is_disjoint(&c));
+
+    // b ⊂ a
+    assert!(b.is_subset(&a));
+
+    // a ⊃ b
+    assert!(a.is_superset(&b));
+}
+
+#[test]
+fn test_hash() {
+    use std::collections::HashSet;
+    use std::hash::{Hash, Hasher};
+
+    struct User {
+        id: String,
+        name: String,
+        age: i32,
+    }
+
+    // ID が等しければ同じユーザーとみなす
+    impl PartialEq for User {
+        fn eq(&self, other: &Self) -> bool {
+            self.id == other.id
+        }
+    }
+
+    impl Eq for User {}
+
+    // ID をもとにハッシュ値を生成する
+    impl Hash for User {
+        fn hash<H: Hasher>(&self, hasher: &mut H) {
+            self.id.hash(hasher)
+        }
+    }
+
+    let mut us = HashSet::<User>::new();
+    assert!(us.insert(User {
+        id: "111".to_string(),
+        name: "user111".to_string(),
+        age: 10,
+    }));
+    assert!(us.insert(User {
+        id: "222".to_string(),
+        name: "user222".to_string(),
+        age: 20,
+    }));
+    assert!(!us.insert(User {
+        id: "111".to_string(),
+        name: "user111".to_string(),
+        age: 10,
+    }));
+    assert_eq!(us.len(), 2);
+    assert!(us.contains(
+        &(User {
+            id: "111".to_string(),
+            name: "user111".to_string(),
+            age: 10,
+        })
+    ))
+}
