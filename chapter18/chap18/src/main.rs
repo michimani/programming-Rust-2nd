@@ -111,3 +111,12 @@ fn test_process_command() {
     drop(to_child);
     child.wait().unwrap();
 }
+
+#[test]
+fn test_repeat() {
+    let mut buf = [0u8; 10];
+    let mut rep_reader = io::repeat(9);
+
+    rep_reader.read_exact(&mut buf);
+    assert_eq!(buf, [9, 9, 9, 9, 9, 9, 9, 9, 9, 9])
+}
