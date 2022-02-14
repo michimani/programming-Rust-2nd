@@ -44,7 +44,8 @@ fn main() {
 }
 
 fn unicode() -> io::Result<()> {
-    for l in io::stdin().lock().lines() {
+    let si = io::stdin();
+    for l in si.lock().lines() {
         let line = l?;
         for c in line.chars() {
             println!("{}: 0x{:x}", &c, c as u32);
