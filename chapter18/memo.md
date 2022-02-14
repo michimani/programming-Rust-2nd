@@ -72,3 +72,50 @@
   - 区切りは改行ではなく `stop_byte` で指定したバイト列
 
 ### Writer
+
+- 入力にはメソッドを使っていたが、出力にはマクロが存在する
+  - print 系と write 系の違いは下記
+    - 引数に writer を取るかどうか (print 系はとらない)
+    - 引数を返すかどうか (print 系は返さない。write 系は `Result` を返す)
+- 主なメソッド
+  - `writer.write(&buf)`
+    - buf 内のバイト列の一部を writer がもつストリームに出力する
+    - *一部* となっているのはストリームの都合によるから
+    - 返り値の `Result<usize>` で実際に出力されたバイト数がわかる
+  - `writer.write_all(&buf)`
+    - buf 内のバイト列をすべて出力する
+    - 返り値は単に `Result<()>`
+  - `writer.flush()`
+    - バッファされたデータをストリームに書き出す
+    - `println!` と `eprintln!` は自動的にフラッシュする
+    - `print!` と `eprint!` は自動的にフラッシュしない。やりたければ明示的に `.flush()` を呼ぶ
+- reader と同様に **writer をクローズするようなメソッドはない**
+- バッファ付きの writer は `BufWriter::new(writer)` および `BufWriter::with_capacity(size, writer)` で生成できる
+
+### ファイル
+
+- `File::open(fname)`, `File::create(fname)` でオープンする
+- `io` ではなく `fs` モジュール
+- オープンしたあとは reader/writer と同様の動きをする
+- `OpenOption::new()` でオープン方法を柔軟に設定する
+  - [OpenOptions in std::fs - Rust](https://doc.rust-lang.org/std/fs/struct.OpenOptions.html)
+  - メソッドを連鎖させる書き方を ビルダ と呼ぶ
+- `seek` メソッドによってファイル内を移動できるが、遅い。時間がかかる。
+
+### その他の reader, writer
+
+- reader 型
+  - `stdin()`
+- writer 型
+  - `stdout()`, `stderr()`
+  - `Vec<u8>`
+    - 文字列を生成するには `String::from_u8(vec)` とする
+- 両方
+  - `Cursor::new(buf)`
+    - buf から読み出す、バッファ付き reader
+    - String から読み出す reader を作る場合にはこれ
+    - buf の型が `&mut [u8]` または `Vec<u8>` であれば Write も実装する
+  - `std::net::TcpStream`
+  - `std::process::Command`
+    - 子プロセスを起動
+    

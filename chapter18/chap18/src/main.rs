@@ -90,3 +90,24 @@ fn grep_main() -> Result<(), Box<dyn Error>> {
 
     Ok(())
 }
+
+#[test]
+fn test_process_command() {
+    use std::process::{Command, Stdio};
+
+    let mut my_word = vec!["hello", "apple", "children"];
+
+    let mut child = Command::new("grep")
+        .arg("-e")
+        .arg("o")
+        .stdin(Stdio::piped())
+        .spawn()
+        .unwrap();
+
+    let mut to_child = child.stdin.take().unwrap();
+    for w in my_word {
+        writeln!(to_child, "{}", w).unwrap();
+    }
+    drop(to_child);
+    child.wait().unwrap();
+}
