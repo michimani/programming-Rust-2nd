@@ -48,7 +48,7 @@ fn unicode() -> io::Result<()> {
     for l in si.lock().lines() {
         let line = l?;
         for c in line.chars() {
-            println!("{}: 0x{:x}", &c, c as u32);
+            println!("{}: \\u{:x}", &c, c as u32);
         }
     }
 
