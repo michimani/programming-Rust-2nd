@@ -106,10 +106,18 @@
 
 - reader 型
   - `stdin()`
+  - `empty()`
+    - 何もしない reader
+    - `read()` メソッドは `Ok(0)` を返すだけ
+  - `repeat(byte)`
+    - 指定した byte を無限に繰り返す reader
 - writer 型
   - `stdout()`, `stderr()`
   - `Vec<u8>`
     - 文字列を生成するには `String::from_u8(vec)` とする
+  - `io::sink()`
+    - 何もしない writer
+    - `write()` メソッドは `Ok(())` を返すだけ
 - 両方
   - `Cursor::new(buf)`
     - buf から読み出す、バッファ付き reader
@@ -118,4 +126,142 @@
   - `std::net::TcpStream`
   - `std::process::Command`
     - 子プロセスを起動
-    
+
+### バイナリデータ、圧縮、シリアライズ
+
+- `std::io` に対して機能を追加する OSS クレートがいくつか存在する
+  - `byteorder`
+    - reader と writer にバイナリデータの入出力機能を追加
+    - [byteorder - crates.io: Rust Package Registry](https://crates.io/crates/byteorder)
+  - `flate2`
+    - gzip 圧縮されたデータの読み書きを行うアダプタメソッドを提供する
+    - [flate2 - crates.io: Rust Package Registry](https://crates.io/crates/flate2)
+  - `serde`, `serde_json`
+    - Rust の構造体とバイト列との変換をサポートする
+    - [serde - crates.io: Rust Package Registry](https://crates.io/crates/serde)
+    - [serde_json - crates.io: Rust Package Registry](https://crates.io/crates/serde_json)
+
+## ファイルとディレクトリ
+
+- OS はファイル名が有効な Unicode であることを強制しない
+- null 文字とスラッシュ以外を有効なバイト列として扱う
+- Rust でもそのようなバイト列を扱うために `std::ffi::OsStr` と `OsString` がある
+- `OsStr` は UTF-8 のスーパーセット
+- つまり Rust にはふたつの文字列型が存在する
+  - Unicode 文字列を表わす `str` 型
+  - OS が扱うバイト列にも対応した `OsStr` 型
+- `std::path::Path` は `OsStr` とほぼ同じだが、パスを扱う上での便利メソッドが実装されている
+
+### Path と PathBuf
+
+- `Path::new(str) -> &Path`
+  - `&str`, `&OsStr` を `&Path` に変換する
+- `path.parent() -> Option<&Path>`
+  - path の親ディレクトリがあればそれを返す
+- `path.file_name() -> Option<&OsStr>`
+  - path の最後の構成要素があればそれを返す
+- `path.is_absolute()`, `path.is_relative()`
+  - 絶対パスか、相対パスかを返す
+
+  ```rust
+  #[test]
+  fn test_osstr_path() {
+      use std::ffi::OsStr;
+      use std::path::Path;
+
+      // 相対パスか、絶対パスか
+      assert!(Path::new("hoge1/hoge2").is_relative());
+      assert!(Path::new("/hoge0/hoge1/hoge2").is_absolute());
+
+      let p = Path::new("/Users/hoge/dir/filename");
+      // 親ディレクトリ
+      assert_eq!(p.parent(), Some(Path::new("/Users/hoge/dir")));
+
+      // 親ディレクトリの親ディレクトリ
+      assert_eq!(p.parent().unwrap().parent(), Some(Path::new("/Users/hoge")));
+
+      // ファイル名
+      assert_eq!(p.file_name(), Some(OsStr::new("filename")));
+
+      // ルートまで遡るイテレータ
+      assert_eq!(
+          p.ancestors().collect::<Vec<_>>(),
+          vec![
+              Path::new("/Users/hoge/dir/filename"),
+              Path::new("/Users/hoge/dir"),
+              Path::new("/Users/hoge"),
+              Path::new("/Users"),
+              Path::new("/"),
+          ]
+      );
+
+      // パスの結合
+      assert_eq!(
+          Path::new("hoge/dir").join(Path::new("file")),
+          Path::new("hoge/dir/file")
+      );
+      // path2 が絶対パスの場合、返り値は path2 のコピーとなる
+      assert_eq!(
+          Path::new("hoge/dir").join(Path::new("/Users")),
+          Path::new("/Users")
+      )
+  }
+  ```
+
+### ファイルシステム、ディレクトリの読み出し
+
+```rust
+#[test]
+fn test_file_system() {
+    use std::ffi::OsStr;
+    use std::fs;
+    use std::path::Path;
+
+    let tmpdir = Path::new("test/tmp_for_test");
+
+    match fs::create_dir_all(tmpdir) {
+        Err(e) => panic!("{}", e),
+        Ok(_) => println!("create test directory"),
+        _ => panic!("undefined error"),
+    }
+
+    let metadata = match fs::metadata(tmpdir) {
+        Err(e) => panic!("{:?}", e),
+        Ok(m) => m,
+        _ => panic!("undefined error"),
+    };
+
+    assert!(metadata.is_dir());
+
+    match fs::remove_dir(tmpdir) {
+        Err(e) => panic!("{}", e),
+        Ok(_) => println!("remove test directory"),
+        _ => panic!("undefined error"),
+    }
+
+    let testdir = Path::new("test");
+
+    let mut diriter = match testdir.read_dir() {
+        Err(e) => panic!("{}", e),
+        Ok(i) => i,
+        _ => panic!("undefined error"),
+    };
+
+    let mut c = 0;
+    for d in diriter {
+        let dir = match d {
+            Err(e) => panic!("{}", e),
+            Ok(e) => e,
+            _ => panic!("undefined error"),
+        };
+
+        assert_eq!(
+            dir.file_name().to_string_lossy()[0..10],
+            "test_file_".to_string()
+        );
+
+        c += 1;
+    }
+    assert_eq!(c, 5);
+}
+```

@@ -120,3 +120,123 @@ fn test_repeat() {
     rep_reader.read_exact(&mut buf);
     assert_eq!(buf, [9, 9, 9, 9, 9, 9, 9, 9, 9, 9])
 }
+
+#[test]
+fn test_serialize() {
+    use std::collections::HashMap;
+
+    type RoomId = String;
+    type RoomExists = Vec<(char, RoomId)>;
+    type RoomMap = HashMap<RoomId, RoomExists>;
+
+    let mut map = RoomMap::new();
+    map.insert("Room 1".to_string(), vec![('A', "one".to_string())]);
+    map.insert(
+        "Room 2".to_string(),
+        vec![('A', "two".to_string()), ('B', "two".to_string())],
+    );
+
+    match serde_json::to_writer(&mut std::io::stdout(), &map) {
+        Err(e) => {
+            eprintln!("{}", e);
+        }
+        _ => {}
+    }
+}
+
+#[test]
+fn test_osstr_path() {
+    use std::ffi::OsStr;
+    use std::path::Path;
+
+    // 相対パスか、絶対パスか
+    assert!(Path::new("hoge1/hoge2").is_relative());
+    assert!(Path::new("/hoge0/hoge1/hoge2").is_absolute());
+
+    let p = Path::new("/Users/hoge/dir/filename");
+    // 親ディレクトリ
+    assert_eq!(p.parent(), Some(Path::new("/Users/hoge/dir")));
+
+    // 親ディレクトリの親ディレクトリ
+    assert_eq!(p.parent().unwrap().parent(), Some(Path::new("/Users/hoge")));
+
+    // ファイル名
+    assert_eq!(p.file_name(), Some(OsStr::new("filename")));
+
+    // ルートまで遡るイテレータ
+    assert_eq!(
+        p.ancestors().collect::<Vec<_>>(),
+        vec![
+            Path::new("/Users/hoge/dir/filename"),
+            Path::new("/Users/hoge/dir"),
+            Path::new("/Users/hoge"),
+            Path::new("/Users"),
+            Path::new("/"),
+        ]
+    );
+
+    // パスの結合
+    assert_eq!(
+        Path::new("hoge/dir").join(Path::new("file")),
+        Path::new("hoge/dir/file")
+    );
+    // path2 が絶対パスの場合、返り値は path2 のコピーとなる
+    assert_eq!(
+        Path::new("hoge/dir").join(Path::new("/Users")),
+        Path::new("/Users")
+    )
+}
+
+#[test]
+fn test_file_system() {
+    use std::ffi::OsStr;
+    use std::fs;
+    use std::path::Path;
+
+    let tmpdir = Path::new("test/tmp_for_test");
+
+    match fs::create_dir_all(tmpdir) {
+        Err(e) => panic!("{}", e),
+        Ok(_) => println!("create test directory"),
+        _ => panic!("undefined error"),
+    }
+
+    let metadata = match fs::metadata(tmpdir) {
+        Err(e) => panic!("{:?}", e),
+        Ok(m) => m,
+        _ => panic!("undefined error"),
+    };
+
+    assert!(metadata.is_dir());
+
+    match fs::remove_dir(tmpdir) {
+        Err(e) => panic!("{}", e),
+        Ok(_) => println!("remove test directory"),
+        _ => panic!("undefined error"),
+    }
+
+    let testdir = Path::new("test");
+
+    let mut diriter = match testdir.read_dir() {
+        Err(e) => panic!("{}", e),
+        Ok(i) => i,
+        _ => panic!("undefined error"),
+    };
+
+    let mut c = 0;
+    for d in diriter {
+        let dir = match d {
+            Err(e) => panic!("{}", e),
+            Ok(e) => e,
+            _ => panic!("undefined error"),
+        };
+
+        assert_eq!(
+            dir.file_name().to_string_lossy()[0..10],
+            "test_file_".to_string()
+        );
+
+        c += 1;
+    }
+    assert_eq!(c, 5);
+}
