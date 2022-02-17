@@ -22,13 +22,40 @@
 - `spawn` もいいが、もうちょっといい感じにスレッド管理してくれる **Rayon** というクレートがある
   - [rayon - crates.io: Rust Package Registry](https://crates.io/crates/rayon)
 
-
-
-
 ## チャネル
 
+- あるスレッドから別のスレッドへ値を送信する一方通行のパイプ
+- スレッド安全なキュー
+- `sender.send(item)` で送信
+- `receiver.recv()` で値を1つ取り除く
+  - チャネルがからの場合、値が送信されるまで `recv()` はブロックする
+- チャネルは `std::sync::mpsc` モジュールの一部
+  - mpsc => multi-producer, single-consumer
+  - 送信者を複数持つことが可能
+  - `Sender<T>` は Clone を実装しているので、必要なだけクローンして使うことができる
+  - 一方、 `Receiver<T>` は Clone できないので、複数のスレッドで共有して使いたい場合は `Mutex` を使う必要がある
+- `mpsc::channel()` で `(sender, receiver)` を生成
+- `mpsc::sync_channel(n)` でチャネルが保持できる値の数を指定できる (同期チャネル)
+  - チャネルがいっぱいのときは `send()` がブロックする
+- sender, receiver それぞれの型は `mpsc::channel::<String>()` という形で指定できる
+- `send()` も `recv()` も値自体のコピーは行わず、移動のみ
+- それぞれ `Result` を返すが、失敗するのは相手がドロップされている場合のみ
+- 接続をクローズするためにチャネルの一端をドロップするというのはよくやる
+- receiver が値を待つ処理は、下記の二通りの書き方ができる (どちらも挙動は同じ)
 
+  ```rust
+  while let Ok(item) = receiver.recv() {
+    do_something_with(item)
+  }
+  ```
 
+  ```rust
+  for item in receiver {
+    do_something_with(item)
+  }
+  ```
+
+- `sender1.send(sender2)` として、 receiver 側で `sender2.send()` すれば双方向に値をやりとりできる
 
 
 ## 可変状態の共有

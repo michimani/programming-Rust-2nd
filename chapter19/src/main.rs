@@ -59,3 +59,39 @@ fn sleep_and_say(to: &Arc<String>, greet: &str) -> io::Result<()> {
     println!("{}, {}", greet, to);
     Ok(())
 }
+
+use std::sync::mpsc;
+
+#[test]
+fn test_channel() {
+    let r = start_sender();
+    message_printer(r)
+}
+
+/// 10 件のメッセージを 1 秒ごとに送信する
+fn start_sender() -> mpsc::Receiver<String> {
+    let (sender, receiver) = mpsc::sync_channel(3);
+
+    thread::spawn(move || {
+        let one_sec = time::Duration::from_secs(1);
+        for i in 0..10 {
+            thread::sleep(one_sec);
+            let msg = format!("message {}", i);
+            println!("send '{}'", msg);
+            if sender.send(msg).is_err() {
+                break;
+            };
+        }
+    });
+
+    receiver
+}
+
+/// 3 秒ごとにメッセージを読み込んで出力する
+fn message_printer(r: mpsc::Receiver<String>) {
+    let five_sec = time::Duration::from_secs(3);
+    for m in r {
+        thread::sleep(five_sec);
+        println!("{}", m)
+    }
+}
