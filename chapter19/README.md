@@ -57,9 +57,76 @@
 
 - `sender1.send(sender2)` として、 receiver 側で `sender2.send()` すれば双方向に値をやりとりできる
 
-
 ## 可変状態の共有
 
+- Rust では守るべき対象となるデータを `Mutex` の内部に持つ
+- `Mutex::new(item)`
+- `Arc::new()` と合わせて `Arc::new(Mutex::new(item))` のように使うことが多い
+  - Arv はスレッド間で何かを共有する際に有用
+  - Mutex は複数のスレッドから共有アクセスされる可変データを保持するのに有用
+- とはいえ Mutex に頼りすぎるのも良くない
+  - デッドロックは防げない
+    - クリティカルセクションを小さく持ち、入ったらすぐに出るようにする
+  - 毒された排他ロック
+    - Mutex を保持したスレッドがパニックを起こすと、それ以降 Mutex への lock はエラーを返す
+    - パニックを起こしたスレッドはデータの更新を途中までしか行っていない等、データ不整合が起こっている可能性があるため、Rust は安全のためにこのような仕様になっている
 
+### 排他ロックを用いた、複数消費者を持つチャネル
 
+- Rust の `Receiver` は 1 つしか作れない
+- ただし、 `Receiver` を `Mutex` でくるむことで実現できる
+  - `Arc<Mutex<Receiver<T>>>` みたいな感じ
 
+### RwLock\<T\>
+
+- `RwLock::write`
+  - `Mutex.lock()` に近い
+  - 守られている値に対する排他的な mut アクセスを取得できるまで待つ
+- `RwLock::read()`
+  - 非 mut アクセスを提供する
+  - 読み取りに関しては複数スレッドから同時に行っても安全、という観点から、こちらのほうが短いという利点がある
+
+### 条件変数 (CondVar)
+
+- `CondVar::wait(guard)` で条件が満たされるまで待つ
+- `CondVar::notify_all()` または `CondVar::notify_one()` で、待っているスレッドを起こす
+
+### アトミック変数
+
+- `AtomicIsize`, `AtomicUsize`, `AtomicI32`, `AtomicBool` などの型
+- アトミックな値については複数のスレッドが同時に読み書きしてもデータ競合が発生しない
+
+  ```rust
+  #[test]
+  fn test_atomic() {
+      let mut count = Arc::new(AtomicUsize::new(0));
+
+      let mut thread_handles = vec![];
+      for i in 0..10 {
+          let c = count.clone();
+          thread_handles.push(thread::spawn(move || {
+              // fetch_add は `lock incq` 命令にコンパイルされる
+              // 通常の c += 1  は ただの `incq` 命令
+              // Ordering::SeqCst はメモリ順序を表わす
+              // 迷ったらとりあえず SeqCst でいい
+              c.fetch_add(1, Ordering::SeqCst);
+          }))
+      }
+
+      for handle in thread_handles {
+          handle.join().unwrap()
+      }
+
+      println!("{:?}", count);
+  }
+  ```
+
+### グローバル変数
+
+- アトミック変数を用いてグローバル変数を定義することが可能
+
+  ```rust
+  use std::sync::atomic::AtomicUsize;
+
+  static STATIC_VALUE: AtomicUsize = AtomicUsize::new(0);
+  ```

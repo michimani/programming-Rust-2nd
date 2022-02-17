@@ -95,3 +95,98 @@ fn message_printer(r: mpsc::Receiver<String>) {
         println!("{}", m)
     }
 }
+
+use std::sync::Mutex;
+
+#[test]
+fn test_mutex() {
+    let nums = Arc::new(Mutex::new(vec![]));
+
+    let mut thread_handles = vec![];
+    for i in 0..10 {
+        let c = nums.clone();
+        thread_handles.push(thread::spawn(move || {
+            let mut guard = c.lock().unwrap();
+            guard.push(i);
+            drop(guard);
+        }))
+    }
+
+    let mut check_count = 0;
+    loop {
+        let mut g = nums.lock().unwrap();
+        if g.len() == 10 {
+            drop(g);
+            break;
+        }
+        drop(g);
+        check_count += 1;
+    }
+
+    for handle in thread_handles {
+        handle.join().unwrap()
+    }
+
+    println!("check count: {}", check_count);
+    println!("{:?}", nums);
+}
+
+use std::sync::RwLock;
+
+#[test]
+fn test_rwlock() {
+    let nums = Arc::new(RwLock::new(vec![]));
+
+    let mut thread_handles = vec![];
+    for i in 0..10 {
+        let c = nums.clone();
+        thread_handles.push(thread::spawn(move || {
+            let mut guard = c.write().unwrap();
+            guard.push(i);
+            drop(guard);
+        }))
+    }
+
+    let mut check_count = 0;
+    loop {
+        let mut g = nums.read().unwrap();
+        if g.len() == 10 {
+            drop(g);
+            break;
+        }
+        drop(g);
+        check_count += 1;
+    }
+
+    for handle in thread_handles {
+        handle.join().unwrap()
+    }
+
+    println!("check count: {}", check_count);
+    println!("{:?}", nums);
+}
+
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+#[test]
+fn test_atomic() {
+    let mut count = Arc::new(AtomicUsize::new(0));
+
+    let mut thread_handles = vec![];
+    for i in 0..10 {
+        let c = count.clone();
+        thread_handles.push(thread::spawn(move || {
+            // fetch_add は `lock incq` 命令にコンパイルされる
+            // 通常の c += 1  は ただの `incq` 命令
+            // Ordering::SeqCst はメモリ順序を表わす
+            // 迷ったらとりあえず SeqCst でいい
+            c.fetch_add(1, Ordering::SeqCst);
+        }))
+    }
+
+    for handle in thread_handles {
+        handle.join().unwrap()
+    }
+
+    println!("{:?}", count);
+}
