@@ -113,3 +113,18 @@
 - 他の言語 (JavaScript の Promise, C# のタスク) も同様に await 式を用いるが、それらは非同期呼び出しと同時に実行されう
 - Rust は `block_on`, `spawn`, `spawn_local` などの **エグゼキュータ (executor)** と呼ばれる関数に渡すことで始めて実行される
 - エグゼキュータには `tokio` と呼ばれるものがあったり、独自に実装することもできる
+
+### 具体的なアプリケーションの実装 (チャットアプリ)
+
+- [ProgrammingRust/async-chat: Example code from Chapter 19, Asynchronous Programming: an asynchronous chat client and server](https://github.com/ProgrammingRust/async-chat)
+- 大きいクレートを使用する場合、依存を小さくするために `feature` で必要なコンポーネントだけを取り込む
+  - `feature = ["hogehoge"]`
+- アプリケーションで使う汎用的なエラーについては、 `anyhow` クレートを使うと良い
+  - [anyhow - crates.io: Rust Package Registry](https://crates.io/crates/anyhow)
+- 非同期関数内での `lines` は興味深い
+  - イテレータを生成するのではなく、`Result<T>` のストリームを返す
+  - ストリームは、イテレータとフューチャのハイブリッドのようなもの
+  - ストリームのもつ `poll_next` を直接呼ぶのではなく、 `next` を呼んで返されたフューチャに対して `await` すればよい
+  - ストリームを使う際には、 `async_std::prelude::*` を忘れないようにする
+  - 終了したストリームへのポーリングの挙動は定義されていない
+     - `fuse` メソッドで挙動が予測できるようになる (イテレータやフューチャと同様)
