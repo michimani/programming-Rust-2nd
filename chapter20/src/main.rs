@@ -97,17 +97,17 @@ pub async fn many_requests_tmp(
     results
 }
 
-async fn verify_password(p: &str, h: &str, k: &str) -> Result<bool, argonautica::Error> {
-    let password = p.to_string();
-    let hash = h.to_string();
-    let key = k.to_string();
+// async fn verify_password(p: &str, h: &str, k: &str) -> Result<bool, argonautica::Error> {
+//     let password = p.to_string();
+//     let hash = h.to_string();
+//     let key = k.to_string();
 
-    async_std::task::spawn_blocking(move || {
-        argonautica::Verifier::default()
-            .with_hash(hash)
-            .with_password(password)
-            .with_secret_key(key)
-            .verify()
-    })
-    .await
-}
+//     async_std::task::spawn_blocking(move || {
+//         argonautica::Verifier::default()
+//             .with_hash(hash)
+//             .with_password(password)
+//             .with_secret_key(key)
+//             .verify()
+//     })
+//     .await
+// }
